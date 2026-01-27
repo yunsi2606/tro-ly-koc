@@ -104,7 +104,7 @@ var app = builder.Build();
 app.ApplyMigrations();
 
 app.UseCors(b => b
-        .WithOrigins("http://localhost:3000", "https://tro-ly-koc.nhatcuong.io.vn")
+        .WithOrigins("http://localhost:3000", "https://trolykoc.nhatcuong.io.vn")
         .AllowAnyMethod()
         .AllowAnyHeader()
         .AllowCredentials());
