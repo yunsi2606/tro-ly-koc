@@ -142,7 +142,7 @@ class ApiClient {
     }
 
     async topUp(amount: number) {
-        return this.request<{ paymentUrl: string }>("/wallet/topup", {
+        return this.request<PaymentInfo>("/wallet/create-payment", {
             method: "POST",
             body: JSON.stringify({ amount }),
         });
@@ -217,6 +217,16 @@ export interface Transaction {
     amount: number;
     description: string;
     createdAt: string;
+}
+
+export interface PaymentInfo {
+    bankAccount: string;
+    bankName: string;
+    accountName: string;
+    amount: number;
+    content: string;
+    qrCodeUrl: string;
+    expiresAt: string;
 }
 
 export interface Subscription {

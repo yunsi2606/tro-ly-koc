@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, Wallet, Transaction } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { api, Wallet, Transaction, PaymentInfo } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function WalletPage() {
@@ -15,6 +16,8 @@ export default function WalletPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [topUpAmount, setTopUpAmount] = useState("");
     const [isTopUpLoading, setIsTopUpLoading] = useState(false);
+    const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -41,15 +44,15 @@ export default function WalletPage() {
         setIsTopUpLoading(true);
         try {
             const result = await api.topUp(amount);
-            if (result.data?.paymentUrl) {
-                // Redirect to payment page
-                window.open(result.data.paymentUrl, "_blank");
-                toast.success("Đang chuyển đến trang thanh toán...");
+            if (result.data) {
+                setPaymentInfo(result.data);
+                setShowPaymentModal(true);
+                toast.success("Vui lòng quét mã QR để thanh toán");
             } else {
-                toast.error("Không thể tạo link thanh toán");
+                toast.error(result.error || "Không thể tạo yêu cầu thanh toán");
             }
         } catch (error) {
-            toast.error("Lỗi nạp tiền");
+            toast.error("Lỗi tạo yêu cầu nạp tiền");
         } finally {
             setIsTopUpLoading(false);
         }
@@ -62,6 +65,12 @@ export default function WalletPage() {
             return;
         }
         await handleQuickTopUp(amount);
+    };
+
+    const handleClosePaymentModal = () => {
+        setShowPaymentModal(false);
+        setPaymentInfo(null);
+        fetchData(); // Refresh wallet data in case payment completed
     };
 
     if (isLoading) {
@@ -163,7 +172,7 @@ export default function WalletPage() {
                                 <div key={tx.id} className="flex items-center justify-between p-4 bg-slate-800 rounded-lg">
                                     <div className="flex items-center gap-4">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === "TOPUP" ? "bg-green-500/20" :
-                                                tx.type === "REFUND" ? "bg-blue-500/20" : "bg-red-500/20"
+                                            tx.type === "REFUND" ? "bg-blue-500/20" : "bg-red-500/20"
                                             }`}>
                                             {tx.type === "TOPUP" ? "💰" : tx.type === "REFUND" ? "↩️" : "💸"}
                                         </div>
@@ -188,6 +197,66 @@ export default function WalletPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Payment QR Modal */}
+            <Dialog open={showPaymentModal} onOpenChange={handleClosePaymentModal}>
+                <DialogContent className="bg-slate-900 border-slate-800 max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-white text-center">Nạp tiền vào ví</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Quét mã QR hoặc chuyển khoản theo thông tin bên dưới
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {paymentInfo && (
+                        <div className="space-y-4">
+                            {/* QR Code */}
+                            <div className="flex justify-center">
+                                <img
+                                    src={paymentInfo.qrCodeUrl}
+                                    alt="QR Thanh toán"
+                                    className="w-64 h-64 rounded-lg border border-slate-700"
+                                />
+                            </div>
+
+                            {/* Bank Info */}
+                            <div className="bg-slate-800 rounded-lg p-4 space-y-3">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Ngân hàng</span>
+                                    <span className="text-white font-medium">{paymentInfo.bankName}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Số tài khoản</span>
+                                    <span className="text-white font-medium font-mono">{paymentInfo.bankAccount}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Chủ tài khoản</span>
+                                    <span className="text-white font-medium">{paymentInfo.accountName}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Số tiền</span>
+                                    <span className="text-green-400 font-bold">{paymentInfo.amount.toLocaleString()} VNĐ</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Nội dung CK</span>
+                                    <span className="text-yellow-400 font-mono text-sm">{paymentInfo.content}</span>
+                                </div>
+                            </div>
+
+                            <p className="text-center text-xs text-gray-500">
+                                Hệ thống sẽ tự động cập nhật số dư sau khi nhận được thanh toán (1-5 phút)
+                            </p>
+
+                            <Button
+                                className="w-full bg-purple-600 hover:bg-purple-700"
+                                onClick={handleClosePaymentModal}
+                            >
+                                Đã thanh toán xong
+                            </Button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
