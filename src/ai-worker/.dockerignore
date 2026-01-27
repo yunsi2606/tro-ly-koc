@@ -1,0 +1,37 @@
+# Python virtual environments
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Models (downloaded at runtime)
+models/
+*.onnx
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local files
+.env
+.env.local
+*.log
+outputs/
+inputs/
+
+# Git
+.git/
+.gitignore
+
+# libs (if any large local libs)
+lib/

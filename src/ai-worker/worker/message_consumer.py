@@ -66,23 +66,12 @@ class MessageConsumer:
             durable=True
         )
         
-        # For each job type, create queue and bind with correct routing key
-        for job_type, queue_name in QUEUE_NAMES.items():
-            # Declare our queue
-            queue = await self.channel.declare_queue(queue_name, durable=True)
-            
-            # Get MassTransit routing key for this job type
-            mt_routing_key = MASSTRANSIT_ROUTING_KEYS[job_type]
-            
-            # Bind queue to job-requests exchange with MassTransit routing key
-            await queue.bind(job_exchange, routing_key=mt_routing_key)
-            logger.info(f"🔗 Đã bind {queue_name} với routing key: {mt_routing_key}")
-            
-            # Start consuming with job_type context
-            await queue.consume(
-                lambda msg, jt=job_type: self._on_message(msg, jt)
-            )
-            logger.info(f"📥 Đang lắng nghe queue: {queue_name}")
+        # Since MassTransit publishes with empty routing key, use a single unified queue
+        # with wildcard binding to catch all messages, then detect job type from message body
+        unified_queue = await self.channel.declare_queue("ai-worker-jobs", durable=True)
+        await unified_queue.bind(job_exchange, routing_key="#")  # Catch all
+        await unified_queue.consume(self._on_unified_message)
+        logger.info("📥 Đang lắng nghe queue: ai-worker-jobs (wildcard binding)")
         
         self._running = True
         logger.info("✅ Worker sẵn sàng nhận công việc!")
@@ -99,8 +88,68 @@ class MessageConsumer:
         if self.connection:
             await self.connection.close()
     
+    async def _on_debug_message(self, message: IncomingMessage):
+        """DEBUG: Log any message that arrives at the wildcard queue."""
+        logger.warning(f"🚨 DEBUG MESSAGE RECEIVED!")
+        logger.warning(f"   Routing Key: {message.routing_key}")
+        logger.warning(f"   Body (first 200): {message.body.decode()[:200]}")
+        await message.ack()
+    
+    async def _on_unified_message(self, message: IncomingMessage):
+        """Handle incoming job request from unified queue."""
+        logger.info(f"📨 Received message on unified queue")
+        
+        async with message.process():
+            try:
+                raw_body = message.body.decode()
+                body = json.loads(raw_body)
+                
+                # Detect job type from MassTransit messageType field
+                job_type = self._detect_job_type_from_body(body)
+                logger.info(f"🔍 Detected job type: {job_type}")
+                
+                if job_type == "Unknown":
+                    logger.warning(f"⚠️ Unknown job type, ignoring message")
+                    return
+                
+                # MassTransit envelope format: { "message": { ... actual payload ... } }
+                if "message" in body:
+                    payload = body["message"]
+                else:
+                    payload = body
+                
+                job_id = payload.get("jobId") or payload.get("JobId")
+                logger.info(f"📨 Processing Job {job_id} type {job_type}")
+                
+                # Process the job
+                result = await self.dispatcher.dispatch(job_type, payload)
+                
+                # Publish completion event
+                await self._publish_completion(job_id, result)
+                
+                logger.info(f"✅ Hoàn thành Job {job_id}")
+                
+            except Exception as e:
+                logger.error(f"❌ Lỗi xử lý message: {e}", exc_info=True)
+    
+    def _detect_job_type_from_body(self, body: Dict[str, Any]) -> str:
+        """Detect job type from MassTransit message body."""
+        msg_types = body.get("messageType", [])
+        for t in msg_types:
+            if "TalkingHead" in t:
+                return "TalkingHead"
+            elif "VirtualTryOn" in t:
+                return "VirtualTryOn"
+            elif "ImageToVideo" in t:
+                return "ImageToVideo"
+            elif "MotionTransfer" in t:
+                return "MotionTransfer"
+            elif "FaceSwap" in t:
+                return "FaceSwap"
+        return "Unknown"
+    
     async def _on_message(self, message: IncomingMessage, job_type: str):
-        """Handle incoming job request."""
+        """Handle incoming job request (legacy - not used with unified queue)."""
         logger.info(f"🔍 Nhận message! routing_key={message.routing_key}, job_type={job_type}")
         
         async with message.process():
