@@ -1,0 +1,72 @@
+# ===========================================
+# Trợ Lý KOC - AI Worker Dependencies
+# ===========================================
+# Installation order matters! Install in stages:
+# 1. pip install -r requirements.txt
+# 2. (Optional) pip install insightface --no-build-isolation
+
+# Core dependencies
+aio-pika>=9.4.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+minio>=7.2.0
+aiohttp>=3.9.0
+aiofiles>=23.0.0
+
+# ===========================================
+# PyTorch (Install BEFORE diffusers)
+# For CUDA 12.1, run separately first:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# ===========================================
+# torch>=2.1.0
+# torchvision>=0.16.0
+# torchaudio>=2.1.0
+
+# ===========================================
+# Diffusers & Transformers (Core AI)
+# ===========================================
+transformers>=4.36.0
+diffusers>=0.25.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+# xformers>=0.0.23  # Optional: for memory optimization, may have CUDA version issues
+
+# ===========================================
+# Image & Video Processing
+# ===========================================
+Pillow>=10.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+imageio>=2.33.0
+imageio-ffmpeg>=0.4.9
+decord>=0.6.0
+
+# ===========================================
+# Pose Detection (Motion Transfer)
+# ===========================================
+controlnet-aux>=0.0.7
+
+# ===========================================
+# Utilities
+# ===========================================
+tqdm>=4.66.0
+einops>=0.7.0
+omegaconf>=2.3.0
+scipy>=1.11.0
+
+# ===========================================
+# Audio Processing (TalkingHead)
+# ===========================================
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# ===========================================
+# OPTIONAL: Face Analysis (FaceSwap)
+# Requires Visual C++ Build Tools on Windows
+# Install separately: pip install insightface onnxruntime-gpu
+# Or use pre-built wheel from:
+# https://github.com/Gourieff/Assets/releases
+# ===========================================
+# insightface>=0.7.3
+onnxruntime-gpu>=1.16.0

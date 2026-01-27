@@ -1,0 +1,110 @@
+# --- General ---
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+*.swp
+.vscode/
+.idea/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# --- .NET ---
+[Bb]in/
+[Oo]bj/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+coverage.json
+coverage.xml
+_ReSharper.Caches/
+_ReSharper.DotSettings
+
+# --- Node.js / Frontend ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.next/
+out/
+build/
+dist/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+tstsconfig.tsbuildinfo
+next-env.d.ts
+
+# --- Python / AI Worker ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+site/
+
+# --- Docker / Infrastructure ---
+docker-compose.override.yml
+.env
+src/backend/.env
+src/frontend/.env
+src/ai-worker/.env
+docker/.env
+dump.rdb
+
+# --- Data & Volumes (Local Dev) ---
+# Assuming these are mapped in docker-compose
+*_data/
+sqlserver_data/
+redis_data/
+minio_data/
+rabbitmq_data/
+cloudflared/
+
+# --- Project Specific ---
+# Secret or large files not tracked
+*.key
+*.pem
+*.pfx
+*.p12
+*.cer
+*.crt
+inswapper_128.onnx
+insightface-*.whl
+models/
+output/
+inputs/
+tro-li-koc-outputs/
+
+# --- Gemini / Agent ---
+.gemini/
+.antigravity/

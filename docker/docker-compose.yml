@@ -1,0 +1,139 @@
+version: '3.8'
+
+name: trolikoc
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: trolikoc-rabbitmq
+    ports:
+      - "5679:5672"
+      - "15679:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin123}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - trolikoc-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: trolikoc-redis
+    ports:
+      - "6400:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis_data:/data
+    networks:
+      - trolikoc-network
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: trolikoc-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD:-YourStrong@Password123}
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - trolikoc-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: trolikoc-minio
+    ports:
+      - "9030:9000"
+      - "9031:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - trolikoc-network
+
+  api:
+    build:
+      context: ../src/backend
+      dockerfile: src/TroLiKOC.API/Dockerfile
+    container_name: trolikoc-api
+    ports:
+      - "5500:8500"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8500
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=TroLiKOC;User Id=sa;Password=${SA_PASSWORD:-YourStrong@Password123};TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD:-redis123}"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: ${RABBITMQ_USER:-admin}
+      RabbitMQ__Password: ${RABBITMQ_PASS:-admin123}
+      MinIO__Endpoint: minio:9000
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - redis
+      - sqlserver
+      - minio
+    networks:
+      - trolikoc-network
+
+  # AI Worker (uncomment when running on GPU machine)
+  # Requires NVIDIA Container Toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+  ai-worker:
+    build:
+      context: ../src/ai-worker
+      dockerfile: Dockerfile
+    container_name: trolikoc-ai-worker
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-admin123}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    depends_on:
+      - rabbitmq
+      - minio
+    networks:
+      - trolikoc-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: trolikoc-tunnel
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - trolikoc-network
+    environment:
+      - TUNNEL_METRICS=0.0.0.0:3000
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:3000/ready" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - ./cloudflared:/etc/cloudflared
+
+volumes:
+  rabbitmq_data:
+  redis_data:
+  sqlserver_data:
+  minio_data:
+
+
+networks:
+  trolikoc-network:
+    driver: bridge

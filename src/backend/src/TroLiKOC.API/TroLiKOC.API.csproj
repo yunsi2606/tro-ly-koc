@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.1.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TroLiKOC.SharedKernel\TroLiKOC.SharedKernel.csproj" />
+    <ProjectReference Include="..\Modules\TroLiKOC.Modules.Identity\TroLiKOC.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Modules\TroLiKOC.Modules.Wallet\TroLiKOC.Modules.Wallet.csproj" />
+    <ProjectReference Include="..\Modules\TroLiKOC.Modules.Subscription\TroLiKOC.Modules.Subscription.csproj" />
+    <ProjectReference Include="..\Modules\TroLiKOC.Modules.Jobs\TroLiKOC.Modules.Jobs.csproj" />
+    <ProjectReference Include="..\Modules\TroLiKOC.Modules.Payment\TroLiKOC.Modules.Payment.csproj" />
+    <ProjectReference Include="..\TroLiKOC.JobOrchestrator\TroLiKOC.JobOrchestrator.csproj" />
+  </ItemGroup>
+
+</Project>
