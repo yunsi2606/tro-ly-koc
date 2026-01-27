@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     minio_bucket: str = "trolikoc-outputs"
     
     # API Callback
-    api_base_url: str = "http://localhost:5000"
+    api_base_url: str = "http://localhost:5500"  # Docker: api:8500, Local: localhost:5500
     
     # Worker Settings
     worker_concurrency: int = 1  # Number of concurrent jobs (limited by GPU memory)

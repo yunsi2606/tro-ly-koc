@@ -11,7 +11,7 @@ import urllib.error
 SECRET_KEY = "TroLiKOC_SuperSecretKey_2026_MinLength32Chars!"
 ISSUER = "TroLiKOC"
 AUDIENCE = "TroLiKOC"
-API_URL = "http://localhost:5000/api/jobs"
+API_URL = "http://localhost:5500/api/jobs"
 
 def base64url_encode(data):
     return base64.urlsafe_b64encode(data).rstrip(b'=')

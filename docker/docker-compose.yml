@@ -93,6 +93,7 @@ services:
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      API_BASE_URL: http://api:8500
       DEVICE: cuda
     deploy:
       resources:
@@ -104,6 +105,7 @@ services:
     depends_on:
       - rabbitmq
       - minio
+      - api
     networks:
       - trolikoc-network
 
