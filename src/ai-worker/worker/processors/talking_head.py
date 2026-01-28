@@ -38,6 +38,12 @@ class TalkingHeadProcessor(BaseProcessor):
         self._inference_cfg = None
         self._pipeline = None
     
+    def unload_model(self):
+        """Unload pipeline."""
+        self._pipeline = None
+        self._inference_cfg = None
+        super().unload_model()
+    
     def load_model(self):
         """Load LivePortrait model components."""
         try:
@@ -47,8 +53,16 @@ class TalkingHeadProcessor(BaseProcessor):
             
             # Check if LivePortrait is installed
             try:
-                from liveportrait.config.inference_config import InferenceConfig
-                from liveportrait.live_portrait_pipeline import LivePortraitPipeline
+                # Try import style: src.* (if PYTHONPATH points to repo root)
+                try:
+                    from src.config.inference_config import InferenceConfig
+                    from src.live_portrait_pipeline import LivePortraitPipeline
+                    logger.info("✅ Imported LivePortrait from src package")
+                except ImportError:
+                    # Try import style: liveportrait.* (if src was renamed or installed as package)
+                    from liveportrait.config.inference_config import InferenceConfig
+                    from liveportrait.live_portrait_pipeline import LivePortraitPipeline
+                    logger.info("✅ Imported LivePortrait from liveportrait package")
                 
                 self._inference_cfg = InferenceConfig(
                     device_id=0 if self.device == "cuda" else -1,
@@ -164,7 +178,8 @@ class TalkingHeadProcessor(BaseProcessor):
         expression_scale: float
     ):
         """Process using LivePortrait pipeline."""
-        from liveportrait.live_portrait_pipeline import LivePortraitPipeline
+        # Already loaded in self._pipeline, but if we need class reference:
+        # from src.live_portrait_pipeline import LivePortraitPipeline
         
         logger.info("🎭 Generating with LivePortrait...")
         
@@ -218,17 +233,16 @@ class TalkingHeadProcessor(BaseProcessor):
         size = res_map.get(resolution, "1280x720")
         
         # Use ffmpeg to create a simple video from the image
+        # Simplified command to be more robust
         cmd = [
             "ffmpeg", "-y",
             "-loop", "1",
             "-i", inputs.get("source", ""),
             "-i", inputs.get("audio", ""),
             "-c:v", "libx264",
-            "-tune", "stillimage",
-            "-c:a", "aac",
-            "-b:a", "192k",
+            "-t", "5",  # Limit to 5 seconds for testing
             "-pix_fmt", "yuv420p",
-            "-vf", f"scale={size}:force_original_aspect_ratio=decrease,pad={size}:(ow-iw)/2:(oh-ih)/2",
+            "-vf", f"scale={size.split('x')[0]}:-2", # Simple scale, maintain aspect ratio
             "-shortest",
             output_path
         ]

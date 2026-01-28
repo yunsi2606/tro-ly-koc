@@ -35,14 +35,16 @@ export default function StudioPage() {
                     if (!prev) return prev;
                     return {
                         ...prev,
-                        status: update.status as Job["status"],
+                        status: update.status as Job["status"], // Ensure type compatibility
                         outputUrl: update.outputUrl,
+                        errorMessage: update.error
                     };
                 });
 
-                if (update.status === "Completed") {
+                const statusUpper = update.status.toUpperCase();
+                if (statusUpper === "COMPLETED") {
                     toast.success("🎉 Video đã sẵn sàng!");
-                } else if (update.status === "Failed") {
+                } else if (statusUpper === "FAILED") {
                     toast.error(`❌ Lỗi: ${update.error || "Không xác định"}`);
                 }
             });
@@ -261,10 +263,13 @@ function ToolCard({
     currentJob: Job | null;
     isSubmitting: boolean;
 }) {
-    const isProcessing = Boolean(currentJob && !["Completed", "Failed"].includes(currentJob.status));
-    const progress = currentJob?.status === "Queued" ? 25 :
-        currentJob?.status === "Processing" ? 60 :
-            currentJob?.status === "Completed" ? 100 : 0;
+    const statusUpper = currentJob?.status?.toUpperCase();
+    const isProcessing = Boolean(currentJob && !["COMPLETED", "FAILED"].includes(statusUpper || ""));
+
+    let progress = 0;
+    if (statusUpper === "QUEUED") progress = 25;
+    else if (statusUpper === "PROCESSING") progress = 60;
+    else if (statusUpper === "COMPLETED") progress = 100;
 
     return (
         <div className="grid md:grid-cols-2 gap-6 mt-6">
@@ -299,19 +304,20 @@ function ToolCard({
                             <div className="flex items-center justify-between">
                                 <span className="text-gray-400">Trạng thái:</span>
                                 <Badge variant={
-                                    currentJob.status === "Completed" ? "default" :
-                                        currentJob.status === "Failed" ? "destructive" : "secondary"
+                                    statusUpper === "COMPLETED" ? "default" :
+                                        statusUpper === "FAILED" ? "destructive" : "secondary"
                                 }>
-                                    {currentJob.status === "Pending" && "📋 Đang chờ"}
-                                    {currentJob.status === "Queued" && "⏳ Trong hàng đợi"}
-                                    {currentJob.status === "Processing" && "⚙️ Đang xử lý"}
-                                    {currentJob.status === "Completed" && "✅ Hoàn thành"}
-                                    {currentJob.status === "Failed" && "❌ Thất bại"}
+                                    {statusUpper === "PENDING" && "📋 Đang chờ"}
+                                    {statusUpper === "QUEUED" && "⏳ Trong hàng đợi"}
+                                    {statusUpper === "PROCESSING" && "⚙️ Đang xử lý"}
+                                    {statusUpper === "COMPLETED" && "✅ Hoàn thành"}
+                                    {statusUpper === "FAILED" && "❌ Thất bại"}
+                                    {!["PENDING", "QUEUED", "PROCESSING", "COMPLETED", "FAILED"].includes(statusUpper || "") && currentJob.status}
                                 </Badge>
                             </div>
                             <Progress value={progress} className="h-2" />
 
-                            {currentJob.status === "Completed" && currentJob.outputUrl && (
+                            {statusUpper === "COMPLETED" && currentJob.outputUrl && (
                                 <div className="space-y-4">
                                     <div className="aspect-video bg-slate-800 rounded-lg overflow-hidden">
                                         {currentJob.outputUrl.endsWith(".mp4") ? (
@@ -326,7 +332,7 @@ function ToolCard({
                                 </div>
                             )}
 
-                            {currentJob.status === "Failed" && (
+                            {statusUpper === "FAILED" && (
                                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
                                     <p className="text-red-400">{currentJob.errorMessage || "Có lỗi xảy ra khi xử lý"}</p>
                                 </div>

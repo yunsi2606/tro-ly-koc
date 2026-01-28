@@ -70,6 +70,29 @@ class BaseProcessor(ABC):
                 logger.info(f"📥 Đã tải: {name}")
         return local_paths
     
+    
+    def unload_model(self):
+        """Unload the model to free up memory."""
+        import gc
+        import torch
+        
+        if self._model is not None:
+            logger.info(f"🗑️ Đang giải phóng model {self.__class__.__name__}...")
+            self._model = None
+            
+            # Subclasses should override this to clear their specific pipeline variables
+            # e.g. self._pipeline = None
+            
+            # Force garbage collection
+            gc.collect()
+            
+            # Clear CUDA cache if using GPU
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
+            
+            logger.info(f"✅ Đã giải phóng bộ nhớ {self.__class__.__name__}")
+
     def cleanup(self):
         """Clean up temporary files."""
         import shutil

@@ -82,16 +82,33 @@ class JobsHubConnection {
         return () => { this.listeners.delete("*"); };
     }
     private notifyListeners(update: JobUpdate) {
+        // Normalize properties (Backend sends PascalCase, Frontend expects camelCase)
+        const jobId = update.jobId || update.JobId || "";
+        const status = update.status || update.Status || "Unknown";
+        const outputUrl = update.outputUrl || update.OutputUrl;
+        const error = update.error || update.Error;
+
+        // Merge normalized values back for the listener
+        const normalizedUpdate: JobUpdate = {
+            ...update,
+            jobId,
+            status,
+            outputUrl,
+            error
+        };
+
         // Notify specific job listener
-        const specificListener = this.listeners.get(update.jobId);
-        if (specificListener) {
-            specificListener(update);
+        if (jobId) {
+            const specificListener = this.listeners.get(jobId);
+            if (specificListener) {
+                specificListener(normalizedUpdate);
+            }
         }
 
         // Notify catch-all listeners
         const catchAllListener = this.listeners.get("*");
         if (catchAllListener) {
-            catchAllListener(update);
+            catchAllListener(normalizedUpdate);
         }
     }
 
@@ -103,10 +120,20 @@ class JobsHubConnection {
 
 export interface JobUpdate {
     jobId: string;
+    JobId?: string; // Handle PascalCase from backend
+
     status: string;
-    progress?: number;
+    Status?: string; // Handle PascalCase
+
     outputUrl?: string;
+    OutputUrl?: string; // Handle PascalCase
+
     error?: string;
+    Error?: string; // Handle PascalCase
+
+    progress?: number;
+    completedAt?: string;
+    CompletedAt?: string;
 }
 
 export const jobsHub = new JobsHubConnection();

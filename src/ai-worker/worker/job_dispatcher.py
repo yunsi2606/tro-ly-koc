@@ -28,9 +28,20 @@ class JobDispatcher:
         
         # Initialize processors (lazy loading)
         self._processors: Dict[str, BaseProcessor] = {}
+        self._current_job_type = None
     
     def _get_processor(self, job_type: str) -> BaseProcessor:
         """Get or create a processor for the given job type."""
+        
+        # Memory Management: Unload previous processor if switching job types
+        if self._current_job_type and self._current_job_type != job_type:
+            logger.info(f"🔄 Đang chuyển từ {self._current_job_type} sang {job_type}. Giải phóng RAM...")
+            prev_processor = self._processors.get(self._current_job_type)
+            if prev_processor:
+                prev_processor.unload_model()
+        
+        self._current_job_type = job_type
+        
         if job_type not in self._processors:
             logger.info(f"🔧 Đang khởi tạo processor cho {job_type}...")
             
@@ -54,17 +65,11 @@ class JobDispatcher:
     async def dispatch(self, job_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Dispatch a job to the appropriate processor.
-        
-        Args:
-            job_type: Type of the job (TalkingHead, VirtualTryOn, etc.)
-            payload: Job payload from RabbitMQ
-        
-        Returns:
-            Result dictionary with status, output_url, processing_time_ms
         """
         start_time = time.time()
         
         try:
+            # Get processor (loading model if needed)
             processor = self._get_processor(job_type)
             
             # Process the job
@@ -73,6 +78,13 @@ class JobDispatcher:
             # Upload to MinIO
             job_id = payload.get("jobId") or payload.get("JobId")
             output_url = await self.storage.upload_output(job_id, job_type, output_path)
+            
+            # Additional cleanup to free temp files immediately
+            processor.cleanup()
+            
+            # OPTIONAL: Aggressively unload model after EVERY job to run in very low RAM
+            # Uncomment below if still experiencing OOM
+            # processor.unload_model()
             
             processing_time_ms = int((time.time() - start_time) * 1000)
             

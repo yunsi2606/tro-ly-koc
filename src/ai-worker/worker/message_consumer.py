@@ -10,6 +10,8 @@ from typing import Dict, Any
 from aio_pika import connect_robust, Message, IncomingMessage, ExchangeType
 from aio_pika.abc import AbstractRobustConnection, AbstractChannel
 
+from datetime import datetime
+import uuid
 from worker.config import Settings, QUEUE_NAMES
 from worker.job_dispatcher import JobDispatcher
 
@@ -60,8 +62,9 @@ class MessageConsumer:
         logger.info("📡 Đã kết nối exchange: job-requests (topic)")
         
         # Declare completion exchange for sending results back
+        # Use the name that MassTransit expects mostly (Namespace:ClassName)
         self.completion_exchange = await self.channel.declare_exchange(
-            "job-completions",
+            "TroLiKOC.Modules.Jobs.Contracts.Messages:JobCompletedEvent",
             ExchangeType.FANOUT,
             durable=True
         )
@@ -127,7 +130,11 @@ class MessageConsumer:
                 # Publish completion event
                 await self._publish_completion(job_id, result)
                 
-                logger.info(f"✅ Hoàn thành Job {job_id}")
+                status = result.get("status", "UNKNOWN")
+                if status == "COMPLETED":
+                    logger.info(f"✅ Hoàn thành Job {job_id}")
+                else:
+                    logger.error(f"❌ Job {job_id} thất bại: {result.get('error')}")
                 
             except Exception as e:
                 logger.error(f"❌ Lỗi xử lý message: {e}", exc_info=True)
@@ -234,18 +241,37 @@ class MessageConsumer:
     
     async def _publish_completion(self, job_id: str, result: Dict[str, Any]):
         """Publish job completion event to RabbitMQ."""
-        completion_message = {
+        
+        # Construct the payload matching JobCompletedEvent record in C#
+        completion_payload = {
             "jobId": str(job_id),
             "status": result.get("status", "COMPLETED"),
             "outputUrl": result.get("output_url"),
             "error": result.get("error"),
-            "processingTimeMs": result.get("processing_time_ms", 0)
+            "processingTimeMs": int(result.get("processing_time_ms", 0)),
+            "completedAt": datetime.utcnow().isoformat()
+        }
+        
+        # Wrap in MassTransit envelope
+        envelope = {
+            "messageId": str(uuid.uuid4()),
+            "requestId": str(uuid.uuid4()),
+            "correlationId": str(job_id),
+            "conversationId": str(job_id),
+            "sourceAddress": "rabbitmq://ai-worker",
+            "destinationAddress": "rabbitmq://backend/TroLiKOC.Modules.Jobs.Contracts.Messages:JobCompletedEvent",
+            "messageType": [
+                "urn:message:TroLiKOC.Modules.Jobs.Contracts.Messages:JobCompletedEvent"
+            ],
+            "message": completion_payload,
+            "sentTime": datetime.utcnow().isoformat(),
+            "headers": {}
         }
         
         message = Message(
-            body=json.dumps(completion_message).encode(),
-            content_type="application/json"
+            body=json.dumps(envelope).encode(),
+            content_type="application/vnd.masstransit+json"
         )
         
         await self.completion_exchange.publish(message, routing_key="")
-        logger.info(f"📤 Đã gửi kết quả Job {job_id}")
+        logger.info(f"📤 Đã gửi kết quả Job {job_id} tới exchange TroLiKOC.Modules.Jobs.Contracts.Messages:JobCompletedEvent")

@@ -48,27 +48,53 @@ class StorageService:
         import aiohttp
         import aiofiles
         
-        # Create directory if needed
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        # Try to detect if it's an internal MinIO URL that requires authentication
+        is_internal_minio = False
+        minio_bucket = None
+        minio_object = None
         
-        # If it's a MinIO URL, extract bucket and object name
-        if self.settings.minio_endpoint in url:
-            # Parse MinIO URL
-            # Format: http://minio:9000/bucket/object-key
-            parts = url.split("/")
-            bucket = parts[-2]
-            object_name = parts[-1]
+        try:
+            from urllib.parse import urlparse, unquote
+            parsed = urlparse(url)
             
-            self.client.fget_object(bucket, object_name, local_path)
-        else:
-            # Download from external URL
-            async with aiohttp.ClientSession() as session:
+            # Check if host matches MinIO endpoint (e.g. minio:9000)
+            if self.settings.minio_endpoint in parsed.netloc:
+                # Path usually starts with /bucket/object/key...
+                path_parts = parsed.path.strip("/").split("/", 1)
+                if len(path_parts) == 2:
+                    minio_bucket = path_parts[0]
+                    minio_object = unquote(path_parts[1])
+                    is_internal_minio = True
+                    logger.info(f"🔍 Detected internal MinIO URL: bucket={minio_bucket}, object={minio_object}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to parse URL for MinIO detection: {e}")
+
+        if is_internal_minio:
+            try:
+                # Use MinIO SDK (authenticated)
+                self.client.fget_object(minio_bucket, minio_object, local_path)
+                logger.info(f"📥 Đã tải xuống (via SDK): {url}")
+                return local_path
+            except Exception as e:
+                logger.warning(f"⚠️ SDK download failed, falling back to HTTP: {e}")
+                # Fallback to HTTP if SDK fails
+        
+        # Download from URL (works for both external, internal, and public URLs via HTTP)
+        async with aiohttp.ClientSession() as session:
+            try:
                 async with session.get(url) as response:
                     if response.status == 200:
                         async with aiofiles.open(local_path, 'wb') as f:
-                            await f.write(await response.read())
+                            async for chunk in response.content.iter_chunked(8192):
+                                await f.write(chunk)
+                        logger.info(f"📥 Đã tải xuống (via HTTP): {url}")
                     else:
-                        raise Exception(f"Failed to download: {url}, status: {response.status}")
+                        error_msg = f"Failed to download: {url}, status: {response.status}"
+                        logger.error(error_msg)
+                        raise Exception(error_msg)
+            except Exception as e:
+                logger.error(f"❌ Download error: {e}")
+                raise
         
         return local_path
     

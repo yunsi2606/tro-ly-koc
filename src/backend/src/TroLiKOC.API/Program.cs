@@ -63,6 +63,9 @@ builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// REGISTER API SERVICES
+builder.Services.AddScoped<TroLiKOC.Modules.Jobs.Contracts.IJobNotifier, TroLiKOC.API.Services.SignalRJobNotifier>();
+
 // JWT Authentication
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "TroLiKOC_SuperSecretKey_2026_MinLength32Chars!";
 builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)

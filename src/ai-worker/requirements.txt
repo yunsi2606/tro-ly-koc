@@ -62,11 +62,11 @@ librosa>=0.10.0
 soundfile>=0.12.0
 
 # ===========================================
-# OPTIONAL: Face Analysis (FaceSwap)
-# Requires Visual C++ Build Tools on Windows
-# Install separately: pip install insightface onnxruntime-gpu
-# Or use pre-built wheel from:
-# https://github.com/Gourieff/Assets/releases
+# OPTIONAL: Face Analysis (FaceSwap & LivePortrait)
+# Requires Visual C++ Build Tools on Windows (but we are in Linux Docker)
 # ===========================================
-# insightface>=0.7.3
+insightface>=0.7.3
 onnxruntime-gpu>=1.16.0
+typer>=0.9.0
+gradio>=4.0.0
+

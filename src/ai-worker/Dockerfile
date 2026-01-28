@@ -60,6 +60,25 @@ ENV DEVICE=cuda
 # Uncomment to bake models into image
 # RUN python scripts/download_models.py --all
 
+# ===========================================
+# Install LivePortrait
+# ===========================================
+RUN git clone https://github.com/KwaiVGI/LivePortrait /app/LivePortrait
+# Add src to pythonpath so "import config" works if needed, or root for "import src"
+ENV PYTHONPATH="/app/LivePortrait:/app/LivePortrait/src:$PYTHONPATH"
+
+# Install LivePortrait specific requirements if not covered
+RUN pip install -r /app/LivePortrait/requirements.txt
+
+# ===========================================
+# Install SadTalker
+# ===========================================
+RUN git clone https://github.com/OpenTalker/SadTalker /app/SadTalker
+ENV SADTALKER_PATH="/app/SadTalker"
+# SadTalker requirements usually overlap, but running it ensures connection
+# Note: SadTalker requirements might be old, so we rely on our main requirements first
+# RUN pip install -r /app/SadTalker/requirements.txt
+
 # Health Check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')" || exit 1
